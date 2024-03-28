@@ -27,6 +27,20 @@
             top: 0;
         }
 
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .user-info {
+            text-align: right;
+            color: white;
+            font-size: 12px; /* Yazı boyutunu küçülttü */
+            margin-right: 20px; /* Sola kaydırdı */
+        }
+
         #container {
             display: flex;
             margin-top: 60px; /* Başlık yüksekliğine göre ayarlandı */
@@ -128,7 +142,13 @@
     </style>
 </head>
 <body>
-    <h1>Test Dashboard</h1>
+    <h1 class="top-bar">
+        Test Dashboard
+        <div class="user-info">
+            <div>195542005</div>
+            <div>Abdurrahman Yasir Altun</div>
+        </div>
+    </h1>
     <div id="container">
         <div id="chart-container">
             <canvas id="ramUsageChart"></canvas>
@@ -140,7 +160,7 @@
         </div>
         <div id="tests-container">
             <div id="tests">
-                {% for test in ["xss_test", "load_test", "stress_test", "performance_test", "functionality_test", "gui_test", "unit_test", "integration_test", "sql_injection_test"] %}
+                {% for test in ["xss_test", "load_test", "stress_test", "performance_test", "functionality_test", "gui_test", "unit_test", "integration_test", "sql_injection_test", "open_redirect_test"] %}
                     <div class="test">
                         <h2>{{ test.replace("_", " ").capitalize() }}</h2>
                         <div class="status" id="{{ test }}_status"></div>
@@ -154,7 +174,7 @@
     </div>
     <script>
         const socket = io();
-        const totalTests = 9; // Toplam test sayısı
+        const totalTests = 10; // Toplam test sayısı
         let completedTests = 0; // Tamamlanan test sayısı
 
         function startTest(test_name) {
