@@ -40,7 +40,7 @@
             overflow-y: auto; /* Kaydırma özelliği eklendi */
         }
 
-        #ramUsageChart, #networkUsageChart {
+        #ramUsageChart, #networkUsageChart, #cpuUsageChart {
             width: 100%;
             height: 30%; /* Dairesel grafik için yer açma */
         }
@@ -133,6 +133,7 @@
         <div id="chart-container">
             <canvas id="ramUsageChart"></canvas>
             <canvas id="networkUsageChart"></canvas>
+            <canvas id="cpuUsageChart"></canvas>
             <div id="testProgressChartContainer">
                 <canvas id="testProgressChart"></canvas>
             </div>
@@ -280,6 +281,56 @@
                 networkUsageChart.data.datasets[0].data.shift();
             }
             networkUsageChart.update();
+        });
+
+        // CPU Usage Chart
+        const ctxCpu = document.getElementById('cpuUsageChart').getContext('2d');
+        const cpuUsageChart = new Chart(ctxCpu, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'CPU Usage (%)',
+                    data: [],
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1,
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    fill: true
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'category',
+                        position: 'bottom'
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                },
+                plugins: {
+                    datalabels: {
+                        align: 'top',
+                        formatter: function(value) {
+                            return value.toFixed(2) + '%';
+                        },
+                        color: '#9966FF'
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        socket.on('cpu_usage', (data) => {
+            const time = new Date().toLocaleTimeString();
+            cpuUsageChart.data.labels.push(time);
+            cpuUsageChart.data.datasets[0].data.push(data.usage);
+            if (cpuUsageChart.data.labels.length > 20) {
+                cpuUsageChart.data.labels.shift();
+                cpuUsageChart.data.datasets[0].data.shift();
+            }
+            cpuUsageChart.update();
         });
 
         // Test Progress Chart

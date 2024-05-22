@@ -45,7 +45,14 @@ def send_network_usage():
         socketio.emit('network_usage', {'usage': network_usage})
         time.sleep(1)
 
+def send_cpu_usage():
+    while True:
+        cpu_usage = psutil.cpu_percent(interval=1)
+        socketio.emit('cpu_usage', {'usage': cpu_usage})
+        time.sleep(1)
+
 if __name__ == '__main__':
     Thread(target=send_ram_usage).start()
     Thread(target=send_network_usage).start()
+    Thread(target=send_cpu_usage).start()
     socketio.run(app, host='0.0.0.0', port=8000, debug=True)
