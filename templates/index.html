@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            margin: 0;
+            position: fixed;
+            width: 100%;
+            z-index: 1000;
+            top: 0;
+        }
+
+        #container {
+            display: flex;
+            margin-top: 60px; /* Başlık yüksekliğine göre ayarlandı */
+        }
+
+        #chart-container {
+            width: 50%;
+            padding: 20px;
+            height: calc(100vh - 60px); /* Başlık yüksekliğine göre ayarlandı */
+            box-sizing: border-box;
+            overflow-y: auto; /* Kaydırma özelliği eklendi */
+        }
+
+        #ramUsageChart, #networkUsageChart {
+            width: 100%;
+            height: 30%; /* Dairesel grafik için yer açma */
+        }
+
+        #testProgressChartContainer {
+            height: 30%; /* Dairesel grafik için yer ayarlandı */
+        }
+
+        #testProgressChart {
+            width: 100%;
+            height: 100%;
+        }
+
+        #tests-container {
+            width: 50%;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            height: calc(100vh - 60px); /* Başlık yüksekliğine göre ayarlandı */
+        }
+
+        #tests {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .test {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin: 10px;
+            padding: 20px;
+            width: calc(50% - 40px); /* Her satırda iki kart için genişlik */
+            box-sizing: border-box;
+        }
+
+        .test h2 {
+            margin-top: 0;
+        }
+
+        button {
+            background-color: #28a745;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 10px 20px;
+            margin-right: 10px;
+        }
+
+        button:last-child {
+            background-color: #dc3545;
+        }
+
+        pre {
+            background-color: #f4f4f4;
+            border: 1px solid #ccc;
+            padding: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 9em; /* 6 satır için yaklaşık yükseklik */
+            overflow-y: scroll;
+        }
+
+        .status {
+            float: right;
+            font-weight: bold;
+        }
+
+        .status.pending {
+            color: orange;
+        }
+
+        .status.done {
+            color: green;
+        }
+
+        .status-icon.pending:before {
+            content: '\21bb';
+        }
+
+        .status-icon.done:before {
+            content: '\2713';
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Dashboard</h1>
+    <div id="container">
+        <div id="chart-container">
+            <canvas id="ramUsageChart"></canvas>
+            <canvas id="networkUsageChart"></canvas>
+            <div id="testProgressChartContainer">
+                <canvas id="testProgressChart"></canvas>
+            </div>
+        </div>
+        <div id="tests-container">
+            <div id="tests">
+                {% for test in ["xss_test", "load_test", "stress_test", "performance_test", "functionality_test", "gui_test", "unit_test", "integration_test", "sql_injection_test"] %}
+                    <div class="test">
+                        <h2>{{ test.replace("_", " ").capitalize() }}</h2>
+                        <div class="status" id="{{ test }}_status"></div>
+                        <button onclick="startTest('{{ test }}')">Başlat</button>
+                        <button onclick="stopTest('{{ test }}')">Durdur</button>
+                        <pre id="{{ test }}_output"></pre>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <script>
+        const socket = io();
+        const totalTests = 9; // Toplam test sayısı
+        let completedTests = 0; // Tamamlanan test sayısı
+
+        function startTest(test_name) {
+            document.getElementById(`${test_name}_status`).textContent = 'Status: Pending';
+            document.getElementById(`${test_name}_status`).className = 'status pending';
+            socket.emit('start_test', test_name);
+        }
+
+        function stopTest(test_name) {
+            document.getElementById(`${test_name}_status`).textContent = '';
+            socket.emit('stop_test', test_name);
+        }
+
+        socket.on('test_output', (data) => {
+            document.getElementById(`${data.test_name}_output`).textContent = data.output;
+            document.getElementById(`${data.test_name}_status`).textContent = 'Status: Done';
+            document.getElementById(`${data.test_name}_status`).className = 'status done';
+            completedTests++;
+            updateTestProgressChart();
+        });
+
+        // RAM Usage Chart
+        const ctxRam = document.getElementById('ramUsageChart').getContext('2d');
+
+        // Gradient for the chart
+        const gradient = ctxRam.createLinearGradient(0, 0, 0, ctxRam.canvas.height);
+        gradient.addColorStop(0, 'rgba(0, 255, 0, 0.5)'); // Yeşil aşağıda
+        gradient.addColorStop(0.5, 'rgba(0, 255, 0, 0.5)'); // %50'de yeşil
+        gradient.addColorStop(0.5, 'rgba(255, 0, 0, 0.5)'); // %50'de kırmızı
+        gradient.addColorStop(1, 'rgba(255, 0, 0, 0.5)'); // Kırmızı yukarıda
+
+        const ramUsageChart = new Chart(ctxRam, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'RAM Usage (%)',
+                    data: [],
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    backgroundColor: gradient,
+                    fill: true
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'category',
+                        position: 'bottom'
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                },
+                plugins: {
+                    datalabels: {
+                        align: 'top',
+                        formatter: function(value) {
+                            return value + '%';
+                        },
+                        color: '#36A2EB'
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        socket.on('ram_usage', (data) => {
+            const time = new Date().toLocaleTimeString();
+            ramUsageChart.data.labels.push(time);
+            ramUsageChart.data.datasets[0].data.push(data.usage);
+            if (ramUsageChart.data.labels.length > 20) {
+                ramUsageChart.data.labels.shift();
+                ramUsageChart.data.datasets[0].data.shift();
+            }
+            ramUsageChart.update();
+        });
+
+        // Network Usage Chart
+        const ctxNetwork = document.getElementById('networkUsageChart').getContext('2d');
+        const networkUsageChart = new Chart(ctxNetwork, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Network Usage (MBps)',
+                    data: [],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1,
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    fill: true
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'category',
+                        position: 'bottom'
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    datalabels: {
+                        align: 'top',
+                        formatter: function(value) {
+                            return value.toFixed(2) + ' MBps';
+                        },
+                        color: '#FF6384'
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        socket.on('network_usage', (data) => {
+            const time = new Date().toLocaleTimeString();
+            networkUsageChart.data.labels.push(time);
+            networkUsageChart.data.datasets[0].data.push(data.usage);
+            if (networkUsageChart.data.labels.length > 20) {
+                networkUsageChart.data.labels.shift();
+                networkUsageChart.data.datasets[0].data.shift();
+            }
+            networkUsageChart.update();
+        });
+
+        // Test Progress Chart
+        const ctxTestProgress = document.getElementById('testProgressChart').getContext('2d');
+        const testProgressChart = new Chart(ctxTestProgress, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed Tests', 'Remaining Tests'],
+                datasets: [{
+                    data: [0, totalTests],
+                    backgroundColor: ['#28a745', '#dc3545']
+                }]
+            },
+            options: {
+                plugins: {
+                    datalabels: {
+                        formatter: (value, ctx) => {
+                            let sum = 0;
+                            let dataArr = ctx.chart.data.datasets[0].data;
+                            dataArr.map(data => {
+                                sum += data;
+                            });
+                            let percentage = (value * 100 / sum).toFixed(2) + "%";
+                            return percentage;
+                        },
+                        color: '#fff'
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        function updateTestProgressChart() {
+            testProgressChart.data.datasets[0].data[0] = completedTests;
+            testProgressChart.data.datasets[0].data[1] = totalTests - completedTests;
+            testProgressChart.update();
+        }
+    </script>
+</body>
+</html>

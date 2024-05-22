@@ -1,0 +1,112 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
+
+h1 {
+    background-color: #333;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    margin: 0;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+    top: 0;
+}
+
+#container {
+    display: flex;
+    margin-top: 60px; /* Başlık yüksekliğine göre ayarlandı */
+}
+
+#chart-container {
+    width: 50%;
+    padding: 20px;
+    position: fixed; /* Grafiği sabitler */
+    top: 60px; /* Başlık yüksekliğine göre ayarlandı */
+    left: 0;
+    height: calc(100% - 60px); /* Başlık yüksekliğine göre ayarlandı */
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+#ramUsageChart {
+    width: 100%;
+    height: 100%;
+}
+
+#tests-container {
+    width: 50%;
+    margin-left: 50%;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    height: calc(100vh - 60px); /* Başlık yüksekliğine göre ayarlandı */
+}
+
+#tests {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.test {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin: 10px;
+    padding: 20px;
+    width: calc(50% - 40px); /* Her satırda iki kart için genişlik */
+    box-sizing: border-box;
+}
+
+.test h2 {
+    margin-top: 0;
+}
+
+button {
+    background-color: #28a745;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 10px 20px;
+    margin-right: 10px;
+}
+
+button:last-child {
+    background-color: #dc3545;
+}
+
+pre {
+    background-color: #f4f4f4;
+    border: 1px solid #ccc;
+    padding: 10px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 9em; /* 6 satır için yaklaşık yükseklik */
+    overflow-y: scroll;
+}
+
+.status {
+    float: right;
+    font-weight: bold;
+}
+
+.status.pending {
+    color: orange;
+}
+
+.status.done {
+    color: green;
+}
+
+.status-icon.pending:before {
+    content: '\21bb';
+}
+
+.status-icon.done:before {
+    content: '\2713';
+}
